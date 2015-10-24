@@ -1,5 +1,6 @@
 import sys
 import getopt
+import random
 
 import Checksum
 import BasicSender
@@ -15,8 +16,59 @@ class Sender(BasicSender.BasicSender):
 
     # Main sending loop.
     def start(self):
-      # add things here
-      pass
+        sequence_num_size = 2**32
+        sequence_num = random.randint(1, 2**32-1)
+        window_size = 1
+        window = []
+        block_size = 1400
+
+        syn = self.make_packet("syn", sequence_num, "")
+        sequence_num = (sequence_num + 1) % sequence_num_size
+        if self.debug:
+            print ">>>", syn
+        self.send(syn)
+        res = self.receive()
+        if self.debug:
+            print "<<<", res
+
+        data1 = self.infile.read(block_size)
+        if not data1:
+            # The file is empty
+            fin = self.make_packet("fin", sequence_num, "")
+            sequence_num = (sequence_num + 1) % sequence_num_size
+            if self.debug:
+                print ">>>", fin
+            self.send(fin)
+            res = self.receive()
+            if self.debug:
+                print "<<<", res
+            sys.exit()
+
+        while True: 
+            data = self.infile.read(block_size)
+            if not data:
+                fin = self.make_packet("fin", sequence_num, (data1.rstrip()).lstrip())
+                sequence_num = (sequence_num + 1) % sequence_num_size
+                if self.debug:
+                    print ">>>", fin
+                self.send(fin)
+                res = self.receive()
+                if self.debug:
+                    print "<<<", res
+                break
+            data_packet = self.make_packet("dat", sequence_num, (data1.rstrip()).lstrip())
+            sequence_num = (sequence_num + 1) % sequence_num_size
+            if self.debug:
+                print ">>>", data1
+            self.send(data_packet)
+            res = self.receive()
+            if self.debug:
+                print "<<<", res
+            data1 = data
+
+        sys.exit()
+
+
         
 '''
 This will be run if you run this script from the command line. You should not
