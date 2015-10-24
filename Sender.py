@@ -44,10 +44,10 @@ class Sender(BasicSender.BasicSender):
                 print "<<<", res
             sys.exit()
 
-        while True: 
+        while True:
             data = self.infile.read(block_size)
             if not data:
-                fin = self.make_packet("fin", sequence_num, (data1.rstrip()).lstrip())
+                fin = self.make_packet("fin", sequence_num, (data1))
                 sequence_num = (sequence_num + 1) % sequence_num_size
                 if self.debug:
                     print ">>>", fin
@@ -56,7 +56,7 @@ class Sender(BasicSender.BasicSender):
                 if self.debug:
                     print "<<<", res
                 break
-            data_packet = self.make_packet("dat", sequence_num, (data1.rstrip()).lstrip())
+            data_packet = self.make_packet("dat", sequence_num, (data1))
             sequence_num = (sequence_num + 1) % sequence_num_size
             if self.debug:
                 print ">>>", data1
