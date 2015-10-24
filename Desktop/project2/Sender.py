@@ -21,11 +21,9 @@ class Sender(BasicSender.BasicSender):
         window_size = 1
         window = []
         block_size = 1400
-        f = open(filename, "rb")
 
-        syn = "syn|"+str(sequence_num)+"||"
-        sequence_num += 1
-        syn += Checksum.generate_checksum(syn)
+        syn = self.make_packet("syn", sequence_num, "")
+        sequence_num = (sequence_num + 1) % sequence_num_size
         if self.debug:
             print ">>>", syn
         self.send(syn)
@@ -33,32 +31,41 @@ class Sender(BasicSender.BasicSender):
         if self.debug:
             print "<<<", res
 
-        while True: 
-            data = f.read(block_size)
-            if not data:
-                break
-            data_packet = "dat|"+str(sequence_num)+"|"+(data.lstrip()).rstrip()+"|"
-            sequence_num += 1
-            sequence_num = sequence_num % sequence_num_size
-            data_packet += Checksum.generate_checksum(data_packet)
+        data1 = self.infile.read(block_size)
+        if not data1:
+            # The file is empty
+            fin = self.make_packet("fin", sequence_num, "")
+            sequence_num = (sequence_num + 1) % sequence_num_size
             if self.debug:
-                print ">>>", data
+                print ">>>", fin
+            self.send(fin)
+            res = self.receive()
+            if self.debug:
+                print "<<<", res
+            sys.exit()
+
+        while True: 
+            data = self.infile.read(block_size)
+            if not data:
+                fin = self.make_packet("fin", sequence_num, (data1.rstrip()).lstrip())
+                sequence_num = (sequence_num + 1) % sequence_num_size
+                if self.debug:
+                    print ">>>", fin
+                self.send(fin)
+                res = self.receive()
+                if self.debug:
+                    print "<<<", res
+                break
+            data_packet = self.make_packet("dat", sequence_num, (data1.rstrip()).lstrip())
+            sequence_num = (sequence_num + 1) % sequence_num_size
+            if self.debug:
+                print ">>>", data1
             self.send(data_packet)
             res = self.receive()
             if self.debug:
                 print "<<<", res
+            data1 = data
 
-        f.close()
-
-        fin = "fin|"+str(sequence_num)+"||"
-        sequence_num += 1
-        fin += Checksum.generate_checksum(fin)
-        if self.debug:
-            print ">>>", fin
-        self.send(fin)
-        res = self.receive()
-        if self.debug:
-            print "<<<", res
         sys.exit()
 
 
@@ -88,7 +95,7 @@ if __name__ == "__main__":
     port = 33122
     dest = "localhost"
     filename = None
-    debug = True
+    debug = False
     sackMode = False
 
     for o,a in opts:
