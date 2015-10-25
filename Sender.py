@@ -95,7 +95,7 @@ class Sender(BasicSender.BasicSender):
                                 msg_to_send[long(sack_msg[0])+i] = 1
                             if self.debug:
                                 print "msg_to_send", msg_to_send
-                            if sack_msg[1].split(','):
+                            if sack_msg[1] != '':
                                 for i in sack_msg[1].split(','):
                                     msg_to_send.pop(long(i))
                             if self.debug:
