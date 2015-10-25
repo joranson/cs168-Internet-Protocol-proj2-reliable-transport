@@ -20,7 +20,7 @@ class Sender(BasicSender.BasicSender):
         sequence_num = random.randint(1, 2**32-1)
         window_size = 7
         window = []
-        block_size = 1400
+        block_size = 400
 
         syn = self.make_packet("syn", sequence_num, "")
         sequence_num = (sequence_num + 1) % sequence_num_size
@@ -89,11 +89,17 @@ class Sender(BasicSender.BasicSender):
                             #Delete received packets from window.
                             sack_msg = (self.split_packet(res)[1]).split(';')
                             msg_to_send = {}
-
+                            if self.debug:
+                                print "sack_msg", sack_msg
                             for i in range(window_size):
                                 msg_to_send[long(sack_msg[0])+i] = 1
-                            for i in sack_msg[1]:
-                                msg_to_send.pop(long(i))
+                            if self.debug:
+                                print "msg_to_send", msg_to_send
+                            if sack_msg[1].split(','):
+                                for i in sack_msg[1].split(','):
+                                    msg_to_send.pop(long(i))
+                            if self.debug:
+                                print "after pop, msg_to_send", msg_to_send
 
                             for packet in window:
                                 if packet[0] in msg_to_send:
@@ -132,6 +138,7 @@ class Sender(BasicSender.BasicSender):
                     for packet in window:
                         if packet[0] in msg_to_send:
                             self.send(packet[1])
+
 
             if END and window==[]:
                 break
