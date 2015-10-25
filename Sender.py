@@ -75,7 +75,6 @@ class Sender(BasicSender.BasicSender):
             if res and Checksum.validate_checksum(res):             # if sender not receving any ack, this will continue to next loop and send the whole window again
                 
                 lastAckPacket = res
-                # print "received sth", lastAckPacket
 
                 if sackMode:
                     expected_next_seq = long(((self._split_message(res)[1]).split(';'))[0])     # if sender receives some ack, this will move the window
@@ -86,7 +85,7 @@ class Sender(BasicSender.BasicSender):
                 if lastAckSqn == expected_next_seq:
                     sameAckCount += 1
                     if sameAckCount >= 4:
-                        if sackMode:
+                        if sackMode and self.split_packet(res)[1]:
                             #Delete received packets from window.
                             sack_msg = (self.split_packet(res)[1]).split(';')
                             msg_to_send = {}
