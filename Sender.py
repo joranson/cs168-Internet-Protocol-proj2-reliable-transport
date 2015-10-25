@@ -90,10 +90,17 @@ class Sender(BasicSender.BasicSender):
                             sack_msg = (self.split_packet(res)[1]).split(';')
                             msg_to_send = {}
 
+                            if self.debug:
+                                print "sack_msg", sack_msg
                             for i in range(7):
                                 msg_to_send[long(sack_msg[0])+i] = 1
-                            for i in sack_msg[1]:
-                                msg_to_send.pop(long(i))
+                            if self.debug:
+                                print "msg_to_send", msg_to_send
+                            if sack_msg[1].split(','):
+                                for i in sack_msg[1].split(','):
+                                    msg_to_send.pop(long(i))
+                            if self.debug:
+                                print "after pop, msg_to_send", msg_to_send
 
                             for packet in window:
                                 if packet[0] in msg_to_send:
@@ -132,6 +139,7 @@ class Sender(BasicSender.BasicSender):
                     for packet in window:
                         if packet[0] in msg_to_send:
                             self.send(packet[1])
+
 
             if END and window==[]:
                 break
