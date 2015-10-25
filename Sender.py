@@ -18,55 +18,78 @@ class Sender(BasicSender.BasicSender):
     def start(self):
         sequence_num_size = 2**32
         sequence_num = random.randint(1, 2**32-1)
-        window_size = 1
+        window_size = 7
         window = []
-        block_size = 1400
+        block_size = 400
 
         syn = self.make_packet("syn", sequence_num, "")
         sequence_num = (sequence_num + 1) % sequence_num_size
         if self.debug:
             print ">>>", syn
         self.send(syn)
-        res = self.receive()
+        res = self.receive(0.5)
+        while not res or not Checksum.validate_checksum(res):   ## need to check if syn is received by receiver or corrupted
+            if self.debug:
+                print "<<< RESEND SYN: ", res
+            self.send(syn)
+            res = self.receive(0.5)
         if self.debug:
-            print "<<<", res
+            print "<<< GOT VALID ACK FROM RECV: ", self._split_message(res)
 
-        data1 = self.infile.read(block_size)
-        if not data1:
-            # The file is empty
-            fin = self.make_packet("fin", sequence_num, "")
-            sequence_num = (sequence_num + 1) % sequence_num_size
-            if self.debug:
-                print ">>>", fin
-            self.send(fin)
-            res = self.receive()
-            if self.debug:
-                print "<<<", res
-            sys.exit()
-
+        next_send_seq = sequence_num-1
+        END = False
         while True:
-            data = self.infile.read(block_size)
-            if not data:
-                fin = self.make_packet("fin", sequence_num, (data1))
+            if self.debug:
+                print "now window size--------> ", len(window)
+            while len(window)<7:
+                data = self.infile.read(block_size)
+                if not data and END:        # second time tring to get EOF, don't append to window
+                    break
+                if not data:
+                    fin = self.make_packet("fin", sequence_num, data)
+                    if self.debug:
+                        print ">>> EOF ", fin
+                    window.append((sequence_num,fin))
+                    sequence_num = (sequence_num + 1) % sequence_num_size
+                    END = True
+                    break
+                data_packet = self.make_packet("dat", sequence_num, data)
+                window.append((sequence_num,data_packet))
                 sequence_num = (sequence_num + 1) % sequence_num_size
-                if self.debug:
-                    print ">>>", fin
-                self.send(fin)
-                res = self.receive()
-                if self.debug:
-                    print "<<<", res
-                break
-            data_packet = self.make_packet("dat", sequence_num, (data1))
-            sequence_num = (sequence_num + 1) % sequence_num_size
+            for d in window:
+                if d[0]> next_send_seq:        # only send those haven't been sent
+                    self.send(d[1])
+                    if self.debug:
+                        print ">>> SEND WINDOW with SEQUENCE ######## ", d[0]
             if self.debug:
-                print ">>>", data1
-            self.send(data_packet)
-            res = self.receive()
-            if self.debug:
-                print "<<<", res
-            data1 = data
+                print "------------------------ ONE WINDOW SENT ----------------------- "
+            res = self.receive(0.5)
 
+            if res and Checksum.validate_checksum(res):             # if sender not receving any ack, this will continue to next loop and send the whole window again
+                expected_next_seq = int(self._split_message(res)[1])     # if sender receives some ack, this will move the window
+                new_window = []
+                for d in window:
+                    # print "*****************",  d[0]>=expected_next_seq
+                    if d[0] >= expected_next_seq:
+                        new_window.append(d)
+                window = new_window
+                if window!=[]:
+                    next_send_seq = window[-1][0]
+                if self.debug:
+                    print "<<< RECEIVE ACK: ", res
+            else:
+                next_send_seq = window[0][0]-1        # when no acks recevied on sender side, reset expected_next_seq to send the whole window
+
+            if END and window==[]:
+                break
         sys.exit()
+
+    def _split_message(self, message):
+        pieces = message.split('|')
+        msg_type, seqno = pieces[0:2] # first two elements always treated as msg type and seqno
+        checksum = pieces[-1] # last is always treated as checksum
+        # data = '|'.join(pieces[2:-1]) # everything in between is considered data
+        return msg_type, seqno, checksum
 
 
         
