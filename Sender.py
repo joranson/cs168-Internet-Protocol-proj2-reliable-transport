@@ -48,7 +48,7 @@ class Sender(BasicSender.BasicSender):
         while True:
             if self.debug:
                 print "now window size--------> ", len(window)
-            while len(window)<7:
+            while len(window)<window_size:
                 data = self.infile.read(block_size)
                 if not data and END:        # second time tring to get EOF, don't append to window
                     break
@@ -91,7 +91,7 @@ class Sender(BasicSender.BasicSender):
                             sack_msg = (self.split_packet(res)[1]).split(';')
                             msg_to_send = {}
 
-                            for i in range(7):
+                            for i in range(window_size):
                                 msg_to_send[long(sack_msg[0])+i] = 1
                             for i in sack_msg[1]:
                                 msg_to_send.pop(long(i))
@@ -124,7 +124,7 @@ class Sender(BasicSender.BasicSender):
                     sack_msg = (self.split_packet(lastAckPacket)[1]).split(';')
                     msg_to_send = {}
 
-                    for i in range(7):
+                    for i in range(window_size):
                         msg_to_send[long(sack_msg[0])+i] = 1
                     if sack_msg[1] != '':
                         for i in sack_msg[1].split(','):
