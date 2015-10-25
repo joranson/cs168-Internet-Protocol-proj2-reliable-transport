@@ -20,7 +20,7 @@ class Sender(BasicSender.BasicSender):
         sequence_num = random.randint(1, 2**32-1)
         window_size = 7
         window = []
-        block_size = 400
+        block_size = 1400
 
         syn = self.make_packet("syn", sequence_num, "")
         sequence_num = (sequence_num + 1) % sequence_num_size
@@ -75,7 +75,7 @@ class Sender(BasicSender.BasicSender):
             if res and Checksum.validate_checksum(res):             # if sender not receving any ack, this will continue to next loop and send the whole window again
                 
                 lastAckPacket = res
-                print "received sth", lastAckPacket
+                # print "received sth", lastAckPacket
 
                 if sackMode:
                     expected_next_seq = long(((self._split_message(res)[1]).split(';'))[0])     # if sender receives some ack, this will move the window
