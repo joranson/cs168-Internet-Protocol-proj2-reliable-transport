@@ -117,22 +117,22 @@ class Sender(BasicSender.BasicSender):
                 if self.debug:
                     print "<<< RECEIVE ACK: ", res
             else:
-                if sackMode:
+                if not sackMode or not lastAckPacket:
+                    next_send_seq = window[0][0]-1        # when no acks recevied on sender side, reset expected_next_seq to send the whole window
+                else:
                     #Delete received packets from window.
                     sack_msg = (self.split_packet(lastAckPacket)[1]).split(';')
                     msg_to_send = {}
 
                     for i in range(7):
                         msg_to_send[long(sack_msg[0])+i] = 1
-                    for i in sack_msg[1].split(','):
-                        msg_to_send.pop(long(i))
+                    if sack_msg[1] != '':
+                        for i in sack_msg[1].split(','):
+                            msg_to_send.pop(long(i))
 
                     for packet in window:
                         if packet[0] in msg_to_send:
                             self.send(packet[1])
-                else:
-                    next_send_seq = window[0][0]-1        # when no acks recevied on sender side, reset expected_next_seq to send the whole window
-
 
             if END and window==[]:
                 break
